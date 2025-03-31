@@ -74,7 +74,7 @@ def start_interview(request):
                     interview = Interview.objects.create(
                         user=request.user,
                         candidate_name=f"{request.user.first_name} {request.user.last_name}",
-                        resume_content="resume_content",
+                        # resume_content="resume_content",
                     )
             except Interview.DoesNotExist:
                 return Response({
@@ -133,8 +133,8 @@ def upload_resume(request):
         interview = Interview.objects.create(
                 user=request.user,
                 candidate_name=f"{request.user.first_name} {request.user.last_name}",
-                resume_content="resume_content",  # Save the actual file
-                resume_file=resume_file
+                # resume_content="resume_content",  
+                resume_file=resume_file # Save the actual file
             )
 
         return Response({

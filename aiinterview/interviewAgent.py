@@ -19,7 +19,7 @@ import tkinter as tk
 from tkinter import filedialog
 from django.conf import settings
 from io import BytesIO
-
+from .models import Interview
 
 AAI_KEY = settings.AAI_KEY
 GROQ_API_KEY = settings.GROQ_API_KEY
@@ -218,6 +218,13 @@ class ResumeInterviewAgent:
             parse_chain = parse_prompt | self.llm
             parsed_resume = parse_chain.invoke({"resume_text": resume_text})
             self.resume_content = parsed_resume.content
+            
+            if interview_id:
+                # Save parsed resume content to Interview model
+                interview = Interview.objects.get(id=interview_id)
+                interview.resume_content = self.resume_content
+                interview.save()
+            
             return parsed_resume.content
 
         except Exception as e:
