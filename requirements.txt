@@ -1,5 +1,5 @@
 django-cors-headers
-dotenv
+python-dotenv
 djangorestframework
 djangorestframework-jwt
 django
@@ -17,3 +17,7 @@ matplotlib
 seaborn
 nltk
 wordcloud
+aiohttp
+opencv-python
+numpy
+spacy

@@ -1,3 +1,4 @@
+from django.conf import settings
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -13,11 +14,13 @@ from langchain.prompts import ChatPromptTemplate
 # Download necessary NLTK data
 nltk.download('vader_lexicon', quiet=True)
 
+GROQ_API_KEY = settings.GROQ_API_KEY
+
 class InterviewAnalyzer:
     def __init__(self, groq_api_key: str):
         self.llm = ChatGroq(
             api_key=groq_api_key,
-            model_name="llama-3.3-70b-versatile"
+            model_name="llama-3.1-8b-instant"
         )
         
         # Load spaCy model for NLP tasks
@@ -37,21 +40,8 @@ class InterviewAnalyzer:
         self.analysis_results = {}
     
     def load_interview_data(self, csv_file: str):
-        from io import StringIO
         """Load interview data from CSV file"""
-        csv_string = """question_number,question,answer
-                    1,"Can you explain what RESTful APIs are and their key principles?","REST (Representational State Transfer) APIs are architectural guidelines for building web services. The key principles include: statelessness - each request contains all necessary information, client-server separation, cacheable responses, and uniform interface using HTTP methods like GET, POST, PUT, and DELETE. I've implemented several RESTful APIs using Django REST framework, ensuring they follow these principles for better scalability and maintainability."
-                    2,"What's the difference between Python lists and tuples?","Lists and tuples are both sequence data types in Python, but they have key differences. Lists are mutable - you can modify, add, or remove elements after creation, while tuples are immutable. Lists use square brackets [] and tuples use parentheses (). Tuples are generally more memory efficient and can be used as dictionary keys because they're immutable. I prefer using tuples for data that shouldn't change, like coordinates or RGB values."
-                    3,"How do you handle database transactions in Django?","In Django, I handle database transactions using the atomic decorator or context manager. For example, @transaction.atomic ensures that either all database operations complete successfully or none of them do. This is crucial for maintaining data integrity. I also use select_for_update() to prevent race conditions in concurrent operations. Recently, I implemented this in a payment processing system where multiple tables needed to be updated simultaneously."
-                    4,"Explain your experience with version control systems like Git.","I use Git daily for version control. I'm comfortable with branching strategies like Git Flow, creating feature branches, handling merge conflicts, and using commands like git rebase for maintaining a clean history. I also understand the importance of meaningful commit messages and proper documentation. In my recent project, I managed a team repository where we successfully implemented CI/CD pipelines using GitHub Actions."
-                    5,"How do you ensure code quality and testing in your projects?","I believe in a comprehensive testing approach. I write unit tests using pytest, ensuring at least 80% code coverage. I also implement integration tests for API endpoints and use tools like Postman for manual testing. For code quality, I follow PEP 8 guidelines, use linters like flake8, and conduct regular code reviews. In my current project, I've set up pre-commit hooks that run tests and style checks automatically."
-                    6,"What's your approach to handling API authentication and security?","Security is crucial for APIs. I implement JWT (JSON Web Tokens) for authentication, using refresh and access tokens. I also ensure HTTPS usage, implement rate limiting to prevent DDoS attacks, and validate all input data. I'm familiar with Django's built-in security features and OAuth2 for third-party authentication. In my last project, I implemented role-based access control (RBAC) using custom middleware."
-                    7,"How do you optimize database queries for better performance?","Database optimization is key for scalability. I use Django's select_related() and prefetch_related() to prevent N+1 query problems. I create database indexes for frequently queried fields, use query caching when appropriate, and regularly analyze query performance using Django Debug Toolbar. I also implement pagination for large datasets and use database-specific features like PostgreSQL's full-text search when needed."
-                    8,"Describe a challenging technical problem you've solved recently.","Recently, I faced a performance issue in a real-time data processing system. The system was handling thousands of IoT device updates per minute. I implemented message queuing using Redis, added batch processing for updates, and optimized database queries. This reduced response times by 70% and CPU usage by 50%. The solution required careful consideration of data consistency and failover scenarios."
-                    9,"What's your experience with containerization and deployment?","I'm proficient with Docker and container orchestration using Kubernetes. I create optimized Dockerfiles, use multi-stage builds for smaller images, and implement Docker Compose for local development. For deployment, I've worked with AWS ECS and GCP Cloud Run. I understand the importance of container security, proper logging, and monitoring. I've also set up CI/CD pipelines using Jenkins and GitHub Actions."
-                    10,"How do you stay updated with new technologies and best practices?","I regularly read tech blogs, follow Python and Django release notes, and participate in online communities. I contribute to open-source projects when possible and attend virtual tech conferences. I also build side projects to experiment with new technologies. Recently, I learned about FastAPI and GraphQL through a personal project. I believe in continuous learning and sharing knowledge with team members."
-                    """
-        self.interview_data = pd.read_csv(StringIO(csv_string))
+        self.interview_data = pd.read_csv(csv_file)
         print(f"Loaded {len(self.interview_data)} questions from {csv_file}")
         return self.interview_data
     
@@ -141,14 +131,14 @@ class InterviewAnalyzer:
                 {response}
                 
                 Please provide a JSON object with the following structure:
-                {{
-                    "grammar_score": <number 1-10>,
-                    "clarity_score": <number 1-10>,
-                    "professionalism_score": <number 1-10>,
+                {
+                    "grammar_score": [1-10],
+                    "clarity_score": [1-10],
+                    "professionalism_score": [1-10],
                     "strengths": ["list", "of", "strengths"],
                     "areas_for_improvement": ["list", "of", "areas", "to", "improve"],
                     "overall_impression": "brief overall impression"
-                }}
+                }
                 
                 Return only the JSON object, no other text.
                 """
@@ -197,15 +187,15 @@ class InterviewAnalyzer:
                 Response: {response}
                 
                 Please provide a JSON object with the following structure:
-                {{
-                    "technical_accuracy": <number 1-10>,
-                    "depth_of_knowledge": <number 1-10>,
-                    "relevance_to_question": <number 1-10>,
+                {
+                    "technical_accuracy": [1-10],
+                    "depth_of_knowledge": [1-10],
+                    "relevance_to_question": [1-10],
                     "technical_terms": ["list", "of", "technical", "terms", "used"],
                     "strengths": ["list", "of", "technical", "strengths"],
                     "areas_for_improvement": ["list", "of", "technical", "areas", "to", "improve"],
                     "overall_technical_impression": "brief overall technical impression"
-                }}
+                }
                 
                 Return only the JSON object, no other text.
                 """
@@ -420,8 +410,3 @@ def analyze_interview(csv_file: str, groq_api_key: str):
         
     except Exception as e:
         print(f"Error during analysis: {str(e)}")
-
-if __name__ == "__main__":
-    csv_file = input("Enter the path to the interview CSV file: ")
-    groq_api_key = input("Enter your Groq API key: ")
-    analyze_interview(csv_file, groq_api_key)

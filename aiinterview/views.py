@@ -217,36 +217,47 @@ def next_question(request):
             
             if current_question.question_number >= 10:
                 # Generate final results
+                print("in last question")
                 try:
+                    print("Generating results")
                     responses_data = [{
                         'question_number': r.question_number,
                         'question': r.question,
                         'answer': r.answer
                     } for r in interview.responses.all()]
+                    print("Generating results done")
                     
                     # Generate scores
-                    accuracy = 0.75
-                    fluency = 0.75
-                    rhythm = 0.75
+                    accuracy = 75
+                    fluency = 75
+                    rhythm = 75
                     overall = (accuracy + fluency + rhythm) / 3
                     
+                    print("creating result object")
                     result = Result.objects.create(
                         interview=interview,
                         accuracy_score=accuracy,
                         fluency_score=fluency,
                         rhythm_score=rhythm,
                         overall_score=overall,
-                        feedback=agent.generate_feedback(responses_data)
+                        feedback="Nice perfomancef"
                     )
+                    print("creating result done")
                     
+                    print("setting interview")
                     interview.completed = True
                     interview.save()
+                    print("setting interview completed")
                     
+                    print("Returning reesponse")
+                    print("result id = ",result.id)
                     return Response({
                         'status': 'completed',
                         'result_id': result.id
                     })
                 except Exception as e:
+                    print("Returning reesponse faialed")
+                    print(e.with_traceback())
                     return Response({
                         'error': 'Failed to generate results',
                         'details': str(e)
