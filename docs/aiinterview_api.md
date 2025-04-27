@@ -1,90 +1,195 @@
 # AI Interview API Documentation
 
+## Overview
+The AI Interview API provides endpoints for conducting automated technical interviews, analyzing responses, and generating comprehensive feedback. All endpoints require authentication using JWT tokens.
+
 ## Authentication
-All endpoints require JWT Authentication. Include the access token in the Authorization header:
+- All endpoints require a valid JWT token in the Authorization header
+- Format: `Authorization: Bearer <your_jwt_token>`
+
+## Base URL
 ```
-Authorization: Bearer <access_token>
+https://hirevision-backend.vercel.app/api/interview/
 ```
 
 ## Endpoints
 
-### Start Interview
+### 1. Upload Resume
+Upload a candidate's resume before starting the interview.
 
-**Endpoint:** `/aiinterview/start-interview/`
+**Endpoint:** `/upload-resume/`  
+**Method:** `POST`  
+**Content-Type:** `multipart/form-data`
 
-**Method:** `POST`
+#### Request Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| resume | File | Yes | PDF file of the candidate's resume |
 
-**Description:** Creates a new interview session and analyzes the uploaded resume.
-
-**Request Body:**
-- Content-Type: `multipart/form-data`
-- Parameters:
-  - `resume` (file, required): PDF file containing the candidate's resume
-
-**Response:**
+#### Response
 ```json
 {
-    "interview_id": "integer",
+    "status": "success",
+    "message": "Resume uploaded successfully",
+    "interview_id": "uuid"
+}
+```
+
+#### Error Responses
+```json
+{
+    "error": "Missing file",
+    "details": "Resume file is required"
+}
+```
+```json
+{
+    "error": "Invalid file",
+    "details": "File must be a PDF"
+}
+```
+
+### 2. Start Interview
+Initialize a new interview session or resume an existing one.
+
+**Endpoint:** `/start/`  
+**Method:** `POST`  
+**Content-Type:** `application/json`
+
+#### Request Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| interview_id | string | No | UUID of an existing interview (for resuming) |
+
+#### Response
+```json
+{
+    "status": "success",
+    "interview_id": "uuid",
     "question": "string",
-    "message": "string"
+    "question_number": 1
 }
 ```
 
-**Status Codes:**
-- `201`: Created - Interview started successfully
-- `400`: Bad Request - Invalid resume format or missing file
-- `401`: Unauthorized - Invalid or missing token
-
-### Next Question
-
-**Endpoint:** `/aiinterview/next-question/`
-
-**Method:** `POST`
-
-**Description:** Processes the current answer and generates the next interview question.
-
-**Request Body:**
+#### Error Responses
 ```json
 {
-    "interview_id": "integer",
-    "answer": "string"
+    "error": "Interview initialization failed",
+    "details": "error message"
+}
+```
+```json
+{
+    "error": "Interview not found",
+    "details": "Invalid interview_id"
 }
 ```
 
-**Response:**
+### 3. Next Question
+Submit an answer and receive the next question.
+
+**Endpoint:** `/next-question/`  
+**Method:** `POST`  
+**Content-Type:** `application/json`
+
+#### Request Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| interview_id | string | Yes | UUID of the current interview |
+| answer | string | Yes | Candidate's answer to the current question |
+
+#### Success Response (During Interview)
 ```json
 {
+    "status": "success",
     "question": "string",
-    "question_number": "integer",
-    "status": "string"  // "ongoing" or "completed"
+    "question_number": number
 }
 ```
 
-**Status Codes:**
-- `200`: OK - Next question generated successfully
-- `400`: Bad Request - Invalid input or interview already completed
-- `401`: Unauthorized - Invalid or missing token
-- `404`: Not Found - Interview not found
+#### Success Response (Interview Completion)
+```json
+{
+    "status": "completed",
+    "result_id": "uuid",
+    "analysis": {
+        "technical_accuracy": number,
+        "depth_of_knowledge": number,
+        "relevance_score": number,
+        "grammar_score": number,
+        "clarity_score": number,
+        "professionalism_score": number,
+        "positive_sentiment": number,
+        "neutral_sentiment": number,
+        "negative_sentiment": number,
+        "compound_sentiment": number,
+        "overall_technical_score": number,
+        "overall_communication_score": number,
+        "final_score": number,
+        "technical_feedback": string,
+        "communication_feedback": string,
+        "strengths": string[],
+        "areas_for_improvement": string[],
+        "vocabulary_analysis": object
+    }
+}
+```
 
-### Get Results
+#### Error Responses
+```json
+{
+    "error": "Missing required fields",
+    "details": "interview_id and answer are required"
+}
+```
+```json
+{
+    "error": "Interview not found",
+    "details": "Invalid interview_id or unauthorized access"
+}
+```
 
-**Endpoint:** `/aiinterview/results/<interview_id>/`
+### 4. Get Interview Results
+Retrieve the complete analysis and results of a finished interview.
 
+**Endpoint:** `/results/<interview_id>/`  
 **Method:** `GET`
 
-**Description:** Retrieves the complete results and analysis of a finished interview.
+#### URL Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| interview_id | string | Yes | UUID of the completed interview |
 
-**Response:**
+#### Response
 ```json
 {
     "candidate_name": "string",
-    "scores": {
-        "accuracy": "float",
-        "fluency": "float",
-        "rhythm": "float",
-        "overall": "float"
+    "technical_scores": {
+        "technical_accuracy": number,
+        "depth_of_knowledge": number,
+        "relevance_score": number,
+        "overall_technical_score": number
     },
-    "feedback": "string",
+    "communication_scores": {
+        "grammar_score": number,
+        "clarity_score": number,
+        "professionalism_score": number,
+        "overall_communication_score": number
+    },
+    "sentiment_scores": {
+        "positive": number,
+        "neutral": number,
+        "negative": number,
+        "compound": number
+    },
+    "final_score": number,
+    "feedback": {
+        "technical_feedback": "string",
+        "communication_feedback": "string",
+        "strengths": ["string"],
+        "areas_for_improvement": ["string"],
+        "vocabulary_analysis": object
+    },
     "responses": [
         {
             "question": "string",
@@ -94,109 +199,33 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Status Codes:**
-- `200`: OK - Results retrieved successfully
-- `401`: Unauthorized - Invalid or missing token
-- `404`: Not Found - Interview not found
-
-### Get Interview History
-
-**Endpoint:** `/aiinterview/history/`
-
-**Method:** `GET`
-
-**Description:** Retrieves a list of all interviews conducted by the authenticated user.
-
-**Response:**
-```json
-[
-    {
-        "id": "integer",
-        "created_at": "datetime",
-        "completed": "boolean",
-        "candidate_name": "string"
-    }
-]
-```
-
-**Status Codes:**
-- `200`: OK - History retrieved successfully
-- `401`: Unauthorized - Invalid or missing token
-
-### Get Interview Details
-
-**Endpoint:** `/aiinterview/details/<interview_id>/`
-
-**Method:** `GET`
-
-**Description:** Retrieves detailed information about a specific interview session.
-
-**Response:**
+#### Error Response
 ```json
 {
-    "id": "integer",
-    "candidate_name": "string",
-    "created_at": "datetime",
-    "completed": "boolean",
-    "resume_content": "string",
-    "responses": [
-        {
-            "question_number": "integer",
-            "question": "string",
-            "answer": "string",
-            "created_at": "datetime"
-        }
-    ]
+    "error": "Interview not found or unauthorized",
 }
 ```
 
-**Status Codes:**
-- `200`: OK - Details retrieved successfully
-- `401`: Unauthorized - Invalid or missing token
-- `404`: Not Found - Interview not found
+## Rate Limiting
+- Anonymous users: 100 requests per day
+- Authenticated users: 1000 requests per day
+- Login attempts: 5 per minute
 
-## Error Handling
+## Interview Flow
+1. Upload the candidate's resume (PDF format)
+2. Start a new interview session using the returned interview_id
+3. Receive the first question
+4. Submit answer and receive next question
+5. Repeat steps 3-4 until all questions are answered (10 questions total)
+6. Receive final analysis and results
+7. Access detailed results using the results endpoint
 
-The API returns error responses in the following format:
-```json
-{
-    "error": "string",
-    "message": "string",
-    "details": "object (optional)"
-}
-```
-
-Common error codes:
-- `400`: Bad Request - Invalid input data
-- `401`: Unauthorized - Authentication required
-- `403`: Forbidden - Insufficient permissions
-- `404`: Not Found - Resource not found
-- `500`: Internal Server Error - Server-side error
-
-## Best Practices
-
-1. **Resume Format**
-   - Only PDF files are accepted
-   - Maximum file size: 5MB
-   - Ensure the PDF is text-searchable for best results
-
-2. **Answer Format**
-   - Maximum answer length: 2000 characters
-   - Avoid HTML or markdown formatting
-   - Special characters are supported
-
-3. **Rate Limiting**
-   - Maximum 10 requests per minute per user
-   - Maximum 3 concurrent interviews per user
-
-4. **Interview Session**
-   - Sessions timeout after 30 minutes of inactivity
-   - Maximum 10 questions per interview
-   - Results are available immediately after completion
-
-## Additional Notes
-
-- All timestamps are returned in ISO 8601 format
-- The API uses UTF-8 encoding for all text data
-- Responses are cached for 5 minutes where applicable
-- Large result sets are paginated with 20 items per page
+## Notes
+- All scores are on a scale of 0-100
+- Sentiment scores are on a scale of -1 to 1
+- Interview sessions are saved and can be resumed using the interview_id
+- Files are processed securely and stored temporarily
+- All responses should be handled for proper error management
+- The API uses standard HTTP response codes
+- All dates are in ISO 8601 format
+- Maximum file size for resume upload: 10MB

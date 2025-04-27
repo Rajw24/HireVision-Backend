@@ -252,8 +252,8 @@ def next_question(request):
                     # Return result
                     return Response({
                         'status': 'completed',
-                        'result_id': result.id,
-                        'analysis': analysis_results
+                        'result_id': result.id
+                        # 'analysis': analysis_results
                     })
                     
                 except Exception as e:
