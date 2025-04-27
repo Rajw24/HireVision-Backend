@@ -1,4 +1,5 @@
 {
+    "version": 2,
     "builds": [
         {
             "src": "hirevision/wsgi.py",
@@ -10,8 +11,5 @@
             "src": "/(.*)",
             "dest": "hirevision/wsgi.py"
         }
-    ],
-    "env": {
-        "DJANGO_SETTINGS_MODULE": "hirevision.settings"
-    }
+    ]
 }
