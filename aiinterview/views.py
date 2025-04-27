@@ -154,118 +154,118 @@ def upload_resume(request):
 def next_question(request):
     if request.method == 'POST':
         try:
-            print("IN next-question")
             interview_id = request.data.get('interview_id')
             answer = request.data.get('answer')
-            print("Got iid and ans",interview_id, answer)
-            # Validate required fields
-            if not interview_id:
-                return Response({
-                    'error': 'Missing interview_id',
-                    'details': 'interview_id is required'
-                }, status=400)
             
-            if not answer:
+            if not interview_id or not answer:
                 return Response({
-                    'error': 'Missing answer',
-                    'details': 'answer is required'
+                    'error': 'Missing required fields',
+                    'details': 'interview_id and answer are required'
                 }, status=400)
             
             try:
-                print("Getting INterview")
                 interview = Interview.objects.get(id=interview_id, user=request.user)
-                print("Getting INterview done")
             except Interview.DoesNotExist:
-                print("Getting INterview failed")
                 return Response({
                     'error': 'Interview not found',
                     'details': 'Invalid interview_id or unauthorized access'
                 }, status=404)
             
-            print("fetching c q")
             current_question = interview.responses.last()
-            print("fetching c q done")
             if not current_question:
-                print("fetching c q error")
                 return Response({
                     'error': 'Invalid interview state',
                     'details': 'No questions found for this interview'
                 }, status=400)
             
-            # Use the same agent or create if doesn't exist
-            print("Getting agent")
-            agent = get_or_create_agent(request, interview_id)
-            print("Getting agent done")
-            
-            # Load resume content automatically
-            # agent.load_resume_from_interview()
-            
-            # Load interview context
-            print("Loading prs")
-            previous_responses = interview.responses.all().order_by('question_number')
-            for response in previous_responses:
-                if response.answer:
-                    agent.memory.save_context(
-                        {"input": response.question},
-                        {"output": response.answer}
-                    )
-            
-            print("Loading prs done")
-            # Save answer
+            # Save the current answer
             current_question.answer = answer
             current_question.save()
             
             if current_question.question_number >= 10:
-                # Generate final results
-                print("in last question")
+                # This is the last question - generate analysis
                 try:
-                    print("Generating results")
+                    # Create a temporary CSV file with interview data
+                    import pandas as pd
+                    import tempfile
+                    import os
+                    
                     responses_data = [{
                         'question_number': r.question_number,
                         'question': r.question,
                         'answer': r.answer
                     } for r in interview.responses.all()]
-                    print("Generating results done")
                     
-                    # Generate scores
-                    accuracy = 75
-                    fluency = 75
-                    rhythm = 75
-                    overall = (accuracy + fluency + rhythm) / 3
+                    df = pd.DataFrame(responses_data)
                     
-                    print("creating result object")
+                    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv') as tmp:
+                        df.to_csv(tmp.name, index=False)
+                        tmp_path = tmp.name
+                    
+                    # Initialize analyzer and process interview
+                    from .analyzerAgent import InterviewAnalyzer
+                    analyzer = InterviewAnalyzer(settings.GROQ_API_KEY)
+                    analyzer.load_interview_data(tmp_path)
+                    
+                    # Run all analyses
+                    analyzer.analyze_sentiment()
+                    analyzer.analyze_vocabulary()
+                    analyzer.analyze_grammar()
+                    analyzer.analyze_technical_content()
+                    
+                    # Generate visualizations
+                    analyzer.visualize_results()
+                    
+                    # Get JSON formatted results
+                    analysis_results = analyzer.generate_analysis_json()
+                    
+                    # Create result object
                     result = Result.objects.create(
                         interview=interview,
-                        accuracy_score=accuracy,
-                        fluency_score=fluency,
-                        rhythm_score=rhythm,
-                        overall_score=overall,
-                        feedback="Nice perfomancef"
+                        technical_accuracy=analysis_results['technical_accuracy'],
+                        depth_of_knowledge=analysis_results['depth_of_knowledge'],
+                        relevance_score=analysis_results['relevance_score'],
+                        grammar_score=analysis_results['grammar_score'],
+                        clarity_score=analysis_results['clarity_score'],
+                        professionalism_score=analysis_results['professionalism_score'],
+                        positive_sentiment=analysis_results['positive_sentiment'],
+                        neutral_sentiment=analysis_results['neutral_sentiment'],
+                        negative_sentiment=analysis_results['negative_sentiment'],
+                        compound_sentiment=analysis_results['compound_sentiment'],
+                        overall_technical_score=analysis_results['overall_technical_score'],
+                        overall_communication_score=analysis_results['overall_communication_score'],
+                        final_score=analysis_results['final_score'],
+                        technical_feedback=analysis_results['technical_feedback'],
+                        communication_feedback=analysis_results['communication_feedback'],
+                        strengths=analysis_results['strengths'],
+                        areas_for_improvement=analysis_results['areas_for_improvement'],
+                        vocabulary_analysis=analysis_results['vocabulary_analysis']
                     )
-                    print("creating result done")
                     
-                    print("setting interview")
+                    # Clean up temporary file
+                    os.unlink(tmp_path)
+                    
+                    # Mark interview as completed
                     interview.completed = True
                     interview.save()
-                    print("setting interview completed")
                     
-                    print("Returning reesponse")
-                    print("result id = ",result.id)
+                    # Return result
                     return Response({
                         'status': 'completed',
-                        'result_id': result.id
+                        'result_id': result.id,
+                        'analysis': analysis_results
                     })
+                    
                 except Exception as e:
-                    print("Returning reesponse faialed")
-                    print(e.with_traceback())
+                    print("Error in analysis:", str(e))
                     return Response({
                         'error': 'Failed to generate results',
                         'details': str(e)
                     }, status=500)
             
-            # Generate next question
+            # Not the last question, generate next question
+            agent = get_or_create_agent(request, interview_id)
             try:
-                print("Generating next question")
                 next_question = agent.generate_question(answer)
                 new_response = Responses.objects.create(
                     interview=interview,
@@ -273,15 +273,12 @@ def next_question(request):
                     question_number=current_question.question_number + 1
                 )
                 
-                print("Generating next question done")
                 return Response({
                     'status': 'success',
                     'question': next_question,
                     'question_number': new_response.question_number
                 })
             except Exception as e:
-                print("Generating next question failed")
-                print(e)
                 return Response({
                     'error': 'Failed to generate next question',
                     'details': str(e)
@@ -307,13 +304,32 @@ def get_results(request, interview_id):
         
         return Response({
             'candidate_name': interview.candidate_name,
-            'scores': {
-                'accuracy': result.accuracy_score,
-                'fluency': result.fluency_score,
-                'rhythm': result.rhythm_score,
-                'overall': result.overall_score
+            'technical_scores': {
+                'technical_accuracy': result.technical_accuracy,
+                'depth_of_knowledge': result.depth_of_knowledge,
+                'relevance_score': result.relevance_score,
+                'overall_technical_score': result.overall_technical_score
             },
-            'feedback': result.feedback,
+            'communication_scores': {
+                'grammar_score': result.grammar_score,
+                'clarity_score': result.clarity_score,
+                'professionalism_score': result.professionalism_score,
+                'overall_communication_score': result.overall_communication_score
+            },
+            'sentiment_scores': {
+                'positive': result.positive_sentiment,
+                'neutral': result.neutral_sentiment,
+                'negative': result.negative_sentiment,
+                'compound': result.compound_sentiment
+            },
+            'final_score': result.final_score,
+            'feedback': {
+                'technical_feedback': result.technical_feedback,
+                'communication_feedback': result.communication_feedback,
+                'strengths': result.strengths,
+                'areas_for_improvement': result.areas_for_improvement,
+                'vocabulary_analysis': result.vocabulary_analysis
+            },
             'responses': [{
                 'question': r.question,
                 'answer': r.answer

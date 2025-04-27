@@ -25,9 +25,32 @@ class Responses(models.Model):
 
 class Result(models.Model):
     interview = models.OneToOneField(Interview, on_delete=models.CASCADE, related_name='result')
-    accuracy_score = models.FloatField()
-    fluency_score = models.FloatField()
-    rhythm_score = models.FloatField()
-    overall_score = models.FloatField()
-    feedback = models.TextField()
+    # Technical scores
+    technical_accuracy = models.FloatField(default=0.0)
+    depth_of_knowledge = models.FloatField(default=0.0)
+    relevance_score = models.FloatField(default=0.0)
+    
+    # Language quality scores
+    grammar_score = models.FloatField(default=0.0)
+    clarity_score = models.FloatField(default=0.0)
+    professionalism_score = models.FloatField(default=0.0)
+    
+    # Sentiment scores
+    positive_sentiment = models.FloatField(default=0.0)
+    neutral_sentiment = models.FloatField(default=0.0)
+    negative_sentiment = models.FloatField(default=0.0)
+    compound_sentiment = models.FloatField(default=0.0)
+    
+    # Overall scores
+    overall_technical_score = models.FloatField(default=0.0)
+    overall_communication_score = models.FloatField(default=0.0)
+    final_score = models.FloatField(default=0.0)
+    
+    # Feedback fields
+    technical_feedback = models.TextField(blank=True, default='')
+    communication_feedback = models.TextField(blank=True, default='')
+    strengths = models.JSONField(default=list)
+    areas_for_improvement = models.JSONField(default=dict)
+    vocabulary_analysis = models.JSONField(default=dict)
+    
     created_at = models.DateTimeField(auto_now_add=True)

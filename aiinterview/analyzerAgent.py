@@ -131,14 +131,14 @@ class InterviewAnalyzer:
                 {response}
                 
                 Please provide a JSON object with the following structure:
-                {
-                    "grammar_score": [1-10],
-                    "clarity_score": [1-10],
-                    "professionalism_score": [1-10],
+                {{
+                    "grammar_score": <number 1-10>,
+                    "clarity_score": <number 1-10>,
+                    "professionalism_score": <number 1-10>,
                     "strengths": ["list", "of", "strengths"],
                     "areas_for_improvement": ["list", "of", "areas", "to", "improve"],
                     "overall_impression": "brief overall impression"
-                }
+                }}
                 
                 Return only the JSON object, no other text.
                 """
@@ -187,15 +187,15 @@ class InterviewAnalyzer:
                 Response: {response}
                 
                 Please provide a JSON object with the following structure:
-                {
-                    "technical_accuracy": [1-10],
-                    "depth_of_knowledge": [1-10],
-                    "relevance_to_question": [1-10],
+                {{
+                    "technical_accuracy": <number 1-10>,
+                    "depth_of_knowledge": <number 1-10>,
+                    "relevance_to_question": <number 1-10>,
                     "technical_terms": ["list", "of", "technical", "terms", "used"],
                     "strengths": ["list", "of", "technical", "strengths"],
                     "areas_for_improvement": ["list", "of", "technical", "areas", "to", "improve"],
                     "overall_technical_impression": "brief overall technical impression"
-                }
+                }}
                 
                 Return only the JSON object, no other text.
                 """
@@ -369,6 +369,114 @@ class InterviewAnalyzer:
         
         print("Visualizations saved as 'interview_analysis.png' and 'interview_wordcloud.png'")
         return True
+    
+    def generate_analysis_json(self) -> dict:
+        """Generate a JSON-formatted analysis result"""
+        if not self.analysis_results:
+            raise Exception("No analysis results available")
+
+        # Calculate average scores from technical analysis
+        tech_scores = pd.DataFrame(self.analysis_results.get('technical', []))
+        tech_averages = {
+            'technical_accuracy': tech_scores['technical_accuracy'].mean(),
+            'depth_of_knowledge': tech_scores['depth_of_knowledge'].mean(),
+            'relevance_score': tech_scores['relevance_to_question'].mean()
+        }
+        
+        # Calculate average scores from grammar analysis
+        grammar_scores = pd.DataFrame(self.analysis_results.get('grammar', []))
+        grammar_averages = {
+            'grammar_score': grammar_scores['grammar_score'].mean(),
+            'clarity_score': grammar_scores['clarity_score'].mean(),
+            'professionalism_score': grammar_scores['professionalism_score'].mean()
+        }
+        
+        # Get sentiment averages
+        sentiment_df = self.analysis_results.get('sentiment')
+        sentiment_averages = {
+            'positive_sentiment': sentiment_df['positive'].mean(),
+            'neutral_sentiment': sentiment_df['neutral'].mean(),
+            'negative_sentiment': sentiment_df['negative'].mean(),
+            'compound_sentiment': sentiment_df['compound'].mean()
+        }
+        
+        # Calculate overall scores
+        overall_technical = sum(tech_averages.values()) / len(tech_averages)
+        overall_communication = (
+            sum(grammar_averages.values()) / len(grammar_averages) * 0.7 +
+            sentiment_averages['compound_sentiment'] * 0.3
+        )
+        final_score = (overall_technical + overall_communication) / 2
+        
+        # Collect strengths and areas for improvement
+        strengths = []
+        areas_for_improvement = []
+        
+        for analysis in self.analysis_results.get('technical', []):
+            strengths.extend(analysis.get('strengths', []))
+            areas_for_improvement.extend(analysis.get('areas_for_improvement', []))
+            
+        for analysis in self.analysis_results.get('grammar', []):
+            strengths.extend(analysis.get('strengths', []))
+            areas_for_improvement.extend(analysis.get('areas_for_improvement', []))
+        
+        # Remove duplicates and limit to top items
+        strengths = list(set(strengths))[:5]
+        areas_for_improvement = list(set(areas_for_improvement))[:5]
+        
+        return {
+            # Technical scores
+            'technical_accuracy': tech_averages['technical_accuracy'],
+            'depth_of_knowledge': tech_averages['depth_of_knowledge'],
+            'relevance_score': tech_averages['relevance_score'],
+            
+            # Language quality scores
+            'grammar_score': grammar_averages['grammar_score'],
+            'clarity_score': grammar_averages['clarity_score'],
+            'professionalism_score': grammar_averages['professionalism_score'],
+            
+            # Sentiment scores
+            'positive_sentiment': sentiment_averages['positive_sentiment'],
+            'neutral_sentiment': sentiment_averages['neutral_sentiment'],
+            'negative_sentiment': sentiment_averages['negative_sentiment'],
+            'compound_sentiment': sentiment_averages['compound_sentiment'],
+            
+            # Overall scores
+            'overall_technical_score': overall_technical,
+            'overall_communication_score': overall_communication,
+            'final_score': final_score,
+            
+            # Feedback
+            'technical_feedback': self.generate_technical_feedback(),
+            'communication_feedback': self.generate_communication_feedback(),
+            'strengths': strengths,
+            'areas_for_improvement': areas_for_improvement,
+            'vocabulary_analysis': self.analysis_results.get('vocabulary', {})
+        }
+
+    def generate_technical_feedback(self) -> str:
+        """Generate technical feedback summary"""
+        tech_scores = pd.DataFrame(self.analysis_results.get('technical', []))
+        avg_technical = tech_scores[['technical_accuracy', 'depth_of_knowledge', 'relevance_to_question']].mean().mean()
+        
+        if avg_technical >= 8:
+            return "Excellent technical proficiency demonstrated throughout the interview. Strong command of concepts and thorough explanations provided."
+        elif avg_technical >= 6:
+            return "Good technical knowledge shown. Some areas could be explained in more detail, but overall understanding is solid."
+        else:
+            return "Technical responses could be improved. Consider providing more detailed explanations and specific examples."
+
+    def generate_communication_feedback(self) -> str:
+        """Generate communication feedback summary"""
+        grammar_scores = pd.DataFrame(self.analysis_results.get('grammar', []))
+        avg_communication = grammar_scores[['grammar_score', 'clarity_score', 'professionalism_score']].mean().mean()
+        
+        if avg_communication >= 8:
+            return "Excellent communication skills. Clear, professional, and well-articulated responses throughout the interview."
+        elif avg_communication >= 6:
+            return "Good communication overall. Some responses could be more concise and structured, but generally clear and professional."
+        else:
+            return "Communication could be improved. Focus on clarity, structure, and professional language in responses."
 
 def analyze_interview(csv_file: str, groq_api_key: str):
     """Main function to analyze an interview from CSV file"""
