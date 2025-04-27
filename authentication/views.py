@@ -172,7 +172,7 @@ def signin(request):
             response.set_cookie(
                 'refresh_token',
                 str(refresh),
-                max_age=2592000 if remember_me else 3600,
+                max_age=2592000 if remember_me else 360000,
                 httponly=True,
                 secure=False,  # Allow HTTP
                 samesite='Lax'  # Changed from Strict for HTTP

@@ -66,3 +66,6 @@ media/
 *.mp3
 *.wav
 *.aac
+
+interview_analysis.png
+interview_wordcloud.png

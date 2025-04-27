@@ -213,9 +213,6 @@ def next_question(request):
                     analyzer.analyze_grammar()
                     analyzer.analyze_technical_content()
                     
-                    # Generate visualizations
-                    analyzer.visualize_results()
-                    
                     # Get JSON formatted results
                     analysis_results = analyzer.generate_analysis_json()
                     

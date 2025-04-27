@@ -1,7 +1,5 @@
 from django.conf import settings
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from typing import Dict, List, Tuple
 import spacy
 import re
@@ -281,97 +279,7 @@ class InterviewAnalyzer:
         
         return result.content
     
-    def visualize_results(self):
-        """Create visualizations of the analysis results"""
-        if not self.analysis_results:
-            raise Exception("No analysis results available")
-        
-        # Set up the visualization style
-        sns.set_style("whitegrid")
-        
-        # Create a figure with multiple subplots
-        fig = plt.figure(figsize=(15, 10))
-        
-        # 1. Sentiment analysis plot
-        if 'sentiment' in self.analysis_results:
-            sentiment_df = self.analysis_results['sentiment']
-            
-            ax1 = fig.add_subplot(2, 2, 1)
-            sentiment_df[['positive', 'neutral', 'negative']].mean().plot(
-                kind='bar', 
-                ax=ax1, 
-                color=['green', 'gray', 'red']
-            )
-            ax1.set_title('Average Sentiment Scores')
-            ax1.set_ylim(0, 1)
-            
-            # Sentiment by question
-            ax2 = fig.add_subplot(2, 2, 2)
-            sentiment_df.plot(
-                x='question_number', 
-                y='compound', 
-                kind='line', 
-                marker='o', 
-                ax=ax2
-            )
-            ax2.set_title('Sentiment Compound Score by Question')
-            ax2.set_ylim(-1, 1)
-        
-        # 2. Grammar and technical scores
-        if 'grammar' in self.analysis_results and self.analysis_results['grammar']:
-            grammar_df = pd.DataFrame(self.analysis_results['grammar'])
-            
-            ax3 = fig.add_subplot(2, 2, 3)
-            grammar_df[['grammar_score', 'clarity_score', 'professionalism_score']].mean().plot(
-                kind='bar',
-                ax=ax3,
-                color=['blue', 'purple', 'orange']
-            )
-            ax3.set_title('Average Language Quality Scores')
-            ax3.set_ylim(0, 10)
-        
-        if 'technical' in self.analysis_results and self.analysis_results['technical']:
-            tech_df = pd.DataFrame(self.analysis_results['technical'])
-            
-            ax4 = fig.add_subplot(2, 2, 4)
-            tech_df[['technical_accuracy', 'depth_of_knowledge', 'relevance_to_question']].mean().plot(
-                kind='bar',
-                ax=ax4,
-                color=['green', 'teal', 'lime']
-            )
-            ax4.set_title('Average Technical Scores')
-            ax4.set_ylim(0, 10)
-        
-        # Adjust layout and save
-        plt.tight_layout()
-        plt.savefig('interview_analysis.png')
-        plt.close()
-        
-        # 3. Word cloud of vocabulary
-        if 'vocabulary' in self.analysis_results:
-            try:
-                from wordcloud import WordCloud
-                
-                word_freq = self.analysis_results['vocabulary']['word_frequency']
-                
-                # Generate the word cloud
-                wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(word_freq)
-                
-                plt.figure(figsize=(10, 5))
-                plt.imshow(wordcloud, interpolation='bilinear')
-                plt.axis('off')
-                plt.title('Most Common Words in Responses')
-                plt.tight_layout()
-                plt.savefig('interview_wordcloud.png')
-                plt.close()
-            except ImportError:
-                print("WordCloud library not installed, skipping word cloud visualization")
-        
-        print("Visualizations saved as 'interview_analysis.png' and 'interview_wordcloud.png'")
-        return True
-    
     def generate_analysis_json(self) -> dict:
-        """Generate a JSON-formatted analysis result"""
         if not self.analysis_results:
             raise Exception("No analysis results available")
 
@@ -500,21 +408,12 @@ def analyze_interview(csv_file: str, groq_api_key: str):
         print("Analyzing technical content...")
         analyzer.analyze_technical_content()
         
-        # Generate visualizations
-        print("Generating visualizations...")
-        analyzer.visualize_results()
-        
         # Generate summary report
         print("Generating summary report...")
         report = analyzer.generate_summary_report()
         
-        # Save report to file
-        report_file = "interview_analysis_report.md"
-        with open(report_file, "w", encoding="utf-8") as f:
-            f.write(report)
-        
-        print(f"Analysis complete! Report saved to {report_file}")
-        print("You can open the report in any Markdown viewer.")
+        return analyzer.generate_analysis_json()
         
     except Exception as e:
         print(f"Error during analysis: {str(e)}")
+        raise
