@@ -5,6 +5,7 @@ from django.conf import settings
 from django.http.request import QueryDict
 from .models import Interview, Responses, Result  # Updated import
 from .interviewAgent import ResumeInterviewAgent
+from .textEnhancer import enhance_resume_text
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.parsers import FileUploadParser, MultiPartParser, FormParser, JSONParser
@@ -302,24 +303,24 @@ def get_results(request, interview_id):
         return Response({
             'candidate_name': interview.candidate_name,
             'technical_scores': {
-                'technical_accuracy': result.technical_accuracy,
-                'depth_of_knowledge': result.depth_of_knowledge,
-                'relevance_score': result.relevance_score,
-                'overall_technical_score': result.overall_technical_score
+                'technical_accuracy': result.technical_accuracy * 10,
+                'depth_of_knowledge': result.depth_of_knowledge * 10,
+                'relevance_score': result.relevance_score * 10,
+                'overall_technical_score': result.overall_technical_score * 10
             },
             'communication_scores': {
-                'grammar_score': result.grammar_score,
-                'clarity_score': result.clarity_score,
-                'professionalism_score': result.professionalism_score,
-                'overall_communication_score': result.overall_communication_score
+                'grammar_score': result.grammar_score * 10,
+                'clarity_score': result.clarity_score * 10,
+                'professionalism_score': result.professionalism_score * 10,
+                'overall_communication_score': result.overall_communication_score * 10
             },
             'sentiment_scores': {
-                'positive': result.positive_sentiment,
-                'neutral': result.neutral_sentiment,
-                'negative': result.negative_sentiment,
-                'compound': result.compound_sentiment
+                'positive': result.positive_sentiment * 10,
+                'neutral': result.neutral_sentiment * 10,
+                'negative': result.negative_sentiment * 10,
+                'compound': result.compound_sentiment * 10
             },
-            'final_score': result.final_score,
+            'final_score': result.final_score * 10,
             'feedback': {
                 'technical_feedback': result.technical_feedback,
                 'communication_feedback': result.communication_feedback,
@@ -334,3 +335,40 @@ def get_results(request, interview_id):
         })
     except Interview.DoesNotExist:
         return Response({'error': 'Interview not found or unauthorized'}, status=404)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([JSONParser])
+def enhance_text(request):
+    """Handle text enhancement requests"""
+    if request.method == 'POST':
+        try:
+            text = request.data.get('text')
+            enhancement_type = request.data.get('enhancement_type', 'professional')
+            
+            if not text:
+                return Response({
+                    'error': 'Missing text',
+                    'details': 'Text to enhance is required'
+                }, status=400)
+                
+            if enhancement_type not in ['professional', 'technical', 'concise', 'detailed']:
+                return Response({
+                    'error': 'Invalid enhancement type',
+                    'details': 'Enhancement type must be one of: professional, technical, concise, detailed'
+                }, status=400)
+            
+            # Enhance the text using the textEnhancer
+            enhanced_text = enhance_resume_text(text, enhancement_type)
+            
+            return Response({
+                'status': 'success',
+                'enhanced_text': enhanced_text
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': 'Enhancement failed',
+                'details': str(e)
+            }, status=500)
